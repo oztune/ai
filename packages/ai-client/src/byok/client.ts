@@ -4,6 +4,8 @@ import {
   isProviderId,
   maskKey,
 } from '@tanstack/ai/byok'
+import { createAtom, subscribeAtom } from '../snapshot-atom'
+import type { Atom } from '../snapshot-atom'
 import { memoryStorage } from './storage'
 import type { ProviderId } from '@tanstack/ai/byok'
 import type { Keyring, KeyringStorage } from './storage'
@@ -85,29 +87,24 @@ export class ByokClient {
   #prompt: ByokPrompt | null = null
   #coverageAll = false
   #coverage: Record<string, boolean> = {}
-  readonly #listeners = new Set<() => void>()
-  #snapshot: ByokSnapshot
   #storageError: string | null = null
+  readonly #snapshotAtom: Atom<ByokSnapshot>
   readonly #ready: Promise<void>
 
   constructor(options: DefineByokOptions = {}) {
     this.storage = options.storage ?? memoryStorage()
     this.#locked = Boolean(this.storage.unlockable)
-    this.#snapshot = this.#buildSnapshot()
+    this.#snapshotAtom = createAtom<ByokSnapshot>(this.#buildSnapshot())
     this.#ready = this.#hydrate()
   }
 
   /** Resolves when constructor hydration (peek/load) finishes. */
   ready = (): Promise<void> => this.#ready
 
-  subscribe = (listener: () => void): (() => void) => {
-    this.#listeners.add(listener)
-    return () => {
-      this.#listeners.delete(listener)
-    }
-  }
+  subscribe = (listener: () => void): (() => void) =>
+    subscribeAtom(this.#snapshotAtom, listener)
 
-  getSnapshot = (): ByokSnapshot => this.#snapshot
+  getSnapshot = (): ByokSnapshot => this.#snapshotAtom.get()
 
   #buildSnapshot(): ByokSnapshot {
     return {
@@ -350,8 +347,7 @@ export class ByokClient {
   }
 
   #emit(): void {
-    this.#snapshot = this.#buildSnapshot()
-    for (const listener of this.#listeners) listener()
+    this.#snapshotAtom.set(this.#buildSnapshot())
   }
 }
 
