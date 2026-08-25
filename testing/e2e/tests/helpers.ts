@@ -187,28 +187,32 @@ export async function getTranscriptionResult(page: Page): Promise<string> {
 
 export async function fillPrompt(page: Page, text: string) {
   const input = page.getByTestId('prompt-input')
-  await input.click()
-  await input.fill(text)
-  await input.dispatchEvent('input', { bubbles: true })
-  // If fill() didn't trigger React onChange, fall back to pressSequentially
   const btn = page.getByTestId('generate-button')
-  if (await btn.isDisabled()) {
-    await input.clear()
-    await input.pressSequentially(text, { delay: 30 })
-  }
+  await expect
+    .poll(async () => {
+      await input.click()
+      await input.fill('')
+      await input.dispatchEvent('input', { bubbles: true })
+      await input.fill(text)
+      await input.dispatchEvent('input', { bubbles: true })
+      return btn.isEnabled()
+    })
+    .toBe(true)
 }
 
 export async function fillTextInput(page: Page, text: string) {
   const input = page.getByTestId('text-input')
-  await input.click()
-  await input.fill(text)
-  await input.dispatchEvent('input', { bubbles: true })
-  // If fill() didn't trigger React onChange, fall back to pressSequentially
   const btn = page.getByTestId('generate-button')
-  if (await btn.isDisabled()) {
-    await input.clear()
-    await input.pressSequentially(text, { delay: 30 })
-  }
+  await expect
+    .poll(async () => {
+      await input.click()
+      await input.fill('')
+      await input.dispatchEvent('input', { bubbles: true })
+      await input.fill(text)
+      await input.dispatchEvent('input', { bubbles: true })
+      return btn.isEnabled()
+    })
+    .toBe(true)
 }
 
 export async function clickGenerate(page: Page) {
